@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Install runtime dependencies
         run: |
-          dnf -y install git python36 findutils grep sed
+          dnf -y install git python36 findutils grep sed which
           python3.6 -m ensurepip --upgrade || dnf -y install python3-pip
           python3.6 -m pip --version
 
