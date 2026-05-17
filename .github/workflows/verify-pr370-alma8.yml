@@ -1,0 +1,51 @@
+name: verify-pr370-alma8
+
+on:
+  push:
+    branches:
+      - verify-pr370-alma8
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container: almalinux:8.10-20260509
+    steps:
+      - name: Install runtime dependencies
+        run: |
+          dnf -y install git python36 python36-pip findutils grep sed
+
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+
+      - name: Fetch qtop sample repository
+        run: |
+          git clone --depth 1 https://github.com/fgeorgatos/qtop-test-repo.git /tmp/qtop-test-repo
+
+      - name: Show environment
+        run: |
+          cat /etc/almalinux-release
+          python3.6 --version
+
+      - name: Run test suite on Python 3.6
+        run: |
+          python3.6 -m pip install 'pytest==6.2.5'
+          PYTHONPATH="$PWD" python3.6 -m pytest
+
+      - name: Run qtop against issue 346 sample
+        run: |
+          SAMPLE=/tmp/qtop-test-repo/qtop5/results/gef_xwILYNMpoabX4PDGYXIZAA
+          test -f "$SAMPLE/qstat.txt"
+          test -f "$SAMPLE/qstat_q.txt"
+          test -f "$SAMPLE/pbsnodes_a.txt"
+          mkdir -p /tmp/qtop-home
+          HOME=/tmp/qtop-home PYTHONPATH="$PWD" python3.6 -m qtop_py.cli -b pbs -s "$SAMPLE" -c OFF > /tmp/qtop-issue-346.out
+          sed -n '1,80p' /tmp/qtop-issue-346.out
+          grep -q 'Summary: Total:829 Up:819 Free:91 Nodes' /tmp/qtop-issue-346.out
+          grep -q 'patls021' /tmp/qtop-issue-346.out
+
+      - name: Upload qtop output
+        uses: actions/upload-artifact@v4
+        with:
+          name: qtop-issue-346-output
+          path: /tmp/qtop-issue-346.out
